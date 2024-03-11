@@ -39,6 +39,7 @@ const Detail = () => {
     if (isDisabled) {
       dispatch(
         editTodos({
+          id: params.id,
           title: editTitle,
           text: editText,
         })
