@@ -1,54 +1,74 @@
-import {v4 as uuidv4} from 'uuid';
-const ADD_TODO = "ADD_TODO";
-const UPDATE_TODO = "UPDATE_TODO";
-const DELETE_TODO = "DELETE_TODO";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import axios from "axios";
 
-export const addTodo = (payload)=> {
-    return {
-        type: ADD_TODO, payload
-    }
-}
-export const updateTodo = (payload)=> {
-    return {
-        type: UPDATE_TODO, payload
-    }
-}
-export const deleteTodo = (payload)=> {
-    return {
-        type: DELETE_TODO, payload
-    }
-}
+export const getTodos = createAsyncThunk("getTodos", async () => {
+  const { data } = await axios.get(`${process.env.REACT_APP_TODO_SERVER_URL}`);
+  return data;
+});
 
-//초기값
-const initialState = {
-    todos: [
-        {
-            id:uuidv4(),
-            title:"사악한 리액트.",
-            text:"리액트 잘하고싶다.. 진짜루...",
-            isDone:false,
-        }
-    ]
-}
-
-//리듀서
-const todos = (state=initialState, action) => {
-    switch (action.type) {
-        case ADD_TODO:
-            return {
-                todos:[...state.todos, action.payload]
-            }
-        case UPDATE_TODO:
-            return {
-                todos: state.todos.map((todo) => todo.id === action.payload ? { ...todo, isDone: !todo.isDone } : todo)
-            }
-        case DELETE_TODO:
-            return {
-                todos: state.todos.filter((todo) => todo.id !== action.payload)
-            }
-        default:
-            return state;
+export const addTodos = createAsyncThunk("addTodos", async (todo) => {
+  const { data } = await axios.post(
+    `${process.env.REACT_APP_TODO_SERVER_URL}`,
+    todo
+  );
+  return data;
+});
+export const updateTodos = createAsyncThunk("updateTodos", async (todo) => {
+  const { data } = await axios.put(
+    `${process.env.REACT_APP_TODO_SERVER_URL}/${todo.id}`,
+    {
+      ...todo,
+      isDone: !todo.isDone,
     }
-}
+  );
+  return data;
+});
+export const editTodos = createAsyncThunk(
+  "editTodos",
+  async ({ id, title, text }) => {
+    const { data } = await axios.patch(
+      `${process.env.REACT_APP_TODO_SERVER_URL}/${id}`,
+      {
+        title,
+        text,
+      }
+    );
+    return data;
+  }
+);
+export const deleteTodos = createAsyncThunk("deleteTodos", async (todo) => {
+  await axios.delete(`${process.env.REACT_APP_TODO_SERVER_URL}/${todo.id}`);
+  return todo.id;
+});
 
-export default todos;
+export const todoSlice = createSlice({
+  name: "todos",
+  initialState: {
+    todos: [],
+  },
+  extraReducers: (builder) => {
+    builder.addCase(getTodos.fulfilled, (state, action) => {
+      state.todos = [...action.payload];
+    });
+    builder.addCase(addTodos.fulfilled, (state, action) => {
+      state.todos = [...state.todos, action.payload];
+    });
+    builder.addCase(updateTodos.fulfilled, (state, action) => {
+      state.todos = state.todos.map((todo) => {
+        return todo.id === action.payload.id
+          ? { ...todo, isDone: !todo.isDone }
+          : todo;
+      });
+    });
+    builder.addCase(editTodos.fulfilled, (state, action) => {
+      state.todos = state.todos.map((todo) => {
+        return todo.id === action.payload.id;
+      });
+    });
+    builder.addCase(deleteTodos.fulfilled, (state, action) => {
+      state.todos = state.todos.filter((todo) => todo.id !== action.payload);
+    });
+  },
+});
+
+export default todoSlice.reducer;
